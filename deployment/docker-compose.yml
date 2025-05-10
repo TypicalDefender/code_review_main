@@ -1,0 +1,291 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Git Integration Service
+  git-integration:
+    build:
+      context: ../services/git-integration
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Code Analysis Service
+  code-analysis:
+    build:
+      context: ../services/code-analysis
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+    volumes:
+      - ../config:/config
+      - code-analysis-cache:/cache
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # AI Review Service
+  ai-review:
+    build:
+      context: ../services/ai-review
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Chat Service
+  chat:
+    build:
+      context: ../services/chat
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Knowledge Base Service
+  knowledge-base:
+    build:
+      context: ../services/knowledge-base
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Configuration Manager
+  config-manager:
+    build:
+      context: ../services/config-manager
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Reporting Service
+  reporting:
+    build:
+      context: ../services/reporting
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - ../config:/config
+      - reports:/reports
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Issue Tracking Service
+  issue-tracking:
+    build:
+      context: ../services/issue-tracking
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Web UI
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api-gateway:8000
+      - NODE_ENV=production
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # RabbitMQ (Message Queue)
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Redis (Cache)
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # PostgreSQL (Database)
+  postgres:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+volumes:
+  rabbitmq-data:
+  redis-data:
+  postgres-data:
+  code-analysis-cache:
+  reports:
+
+networks:
+  opencodereviews-network:
+    driver: bridge

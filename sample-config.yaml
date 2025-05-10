@@ -1,0 +1,185 @@
+# Open Source AI Code Review System Configuration
+
+# General configuration
+general:
+  name: "OpenCodeReview"
+  version: "1.0.0"
+  description: "Open Source AI-powered Code Review System"
+
+# Review configuration
+reviews:
+  # Review profile (strictness level)
+  profile: "Balanced"  # Options: "Chill", "Balanced", "Assertive"
+  
+  # Review scope
+  scope:
+    include:
+      - "**/*.py"
+      - "**/*.js"
+      - "**/*.ts"
+      - "**/*.java"
+      - "**/*.go"
+    exclude:
+      - "**/node_modules/**"
+      - "**/vendor/**"
+      - "**/dist/**"
+      - "**/build/**"
+      - "**/*.min.js"
+  
+  # Review instructions
+  instructions:
+    default: |
+      Focus on code quality, security, and performance issues.
+      Suggest improvements for readability and maintainability.
+      Identify potential bugs and edge cases.
+    
+    # Path-specific instructions
+    paths:
+      "src/security/**": |
+        Focus on security vulnerabilities and best practices.
+        Check for proper input validation and authentication.
+      "src/api/**": |
+        Ensure API endpoints follow RESTful principles.
+        Check for proper error handling and validation.
+  
+  # Tool configuration
+  tools:
+    # Python tools
+    ruff:
+      enabled: true
+      config_path: ".ruff.toml"
+    
+    # JavaScript/TypeScript tools
+    eslint:
+      enabled: true
+      config_path: ".eslintrc.js"
+    
+    # Security tools
+    semgrep:
+      enabled: true
+      config_path: ".semgrep.yml"
+    
+    # General tools
+    gitleaks:
+      enabled: true
+      config_path: ".gitleaks.toml"
+
+# AI configuration
+ai:
+  # LLM provider
+  provider: "openai"  # Options: "openai", "anthropic", "huggingface"
+  
+  # Model configuration
+  model:
+    name: "gpt-4"
+    temperature: 0.2
+    max_tokens: 4000
+  
+  # Context configuration
+  context:
+    include_file_history: true
+    include_repository_structure: true
+    max_files_in_context: 10
+    max_lines_per_file: 500
+
+# Chat configuration
+chat:
+  enabled: true
+  model:
+    name: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
+  
+  # Commands
+  commands:
+    enabled: true
+    prefix: "@opencr"
+
+# Git platform configuration
+git:
+  # GitHub configuration
+  github:
+    enabled: true
+    app_id: ""  # GitHub App ID
+    webhook_secret: ""  # GitHub webhook secret
+  
+  # GitLab configuration
+  gitlab:
+    enabled: false
+    webhook_secret: ""  # GitLab webhook secret
+  
+  # Azure DevOps configuration
+  azure_devops:
+    enabled: false
+    webhook_secret: ""  # Azure DevOps webhook secret
+  
+  # Bitbucket configuration
+  bitbucket:
+    enabled: false
+    webhook_secret: ""  # Bitbucket webhook secret
+
+# Issue tracking configuration
+issue_tracking:
+  # GitHub Issues configuration
+  github_issues:
+    enabled: true
+  
+  # GitLab Issues configuration
+  gitlab_issues:
+    enabled: false
+  
+  # Jira configuration
+  jira:
+    enabled: false
+    url: ""
+    project_key: ""
+  
+  # Linear configuration
+  linear:
+    enabled: false
+    api_key: ""
+
+# Reporting configuration
+reporting:
+  enabled: true
+  formats:
+    - "markdown"
+    - "html"
+  
+  # Scheduled reports
+  scheduled:
+    enabled: false
+    frequency: "weekly"  # Options: "daily", "weekly", "monthly"
+    day: "Monday"  # For weekly reports
+    time: "09:00"  # 24-hour format
+
+# Knowledge base configuration
+knowledge_base:
+  enabled: true
+  storage:
+    type: "database"  # Options: "database", "file"
+    connection_string: ""
+  
+  # Learning configuration
+  learning:
+    enabled: true
+    feedback_threshold: 3  # Number of similar feedback items before learning
+
+# Deployment configuration
+deployment:
+  mode: "kubernetes"  # Options: "kubernetes", "docker-compose", "standalone"
+  
+  # Resource limits
+  resources:
+    cpu:
+      request: "100m"
+      limit: "500m"
+    memory:
+      request: "256Mi"
+      limit: "1Gi"
+  
+  # Scaling configuration
+  scaling:
+    min_replicas: 1
+    max_replicas: 5
+    target_cpu_utilization: 80
