@@ -5,6 +5,7 @@ This service handles integration with Git platforms (GitHub, GitLab, etc.) and p
 ## Features
 
 - Webhook handling for Git platforms
+- Kafka integration for consuming webhook events
 - API for retrieving repository and pull request information
 - Standardized models for Git objects across different platforms
 
@@ -24,8 +25,8 @@ This service handles integration with Git platforms (GitHub, GitLab, etc.) and p
 
 2. Set environment variables:
    ```
-   export GITHUB_TOKEN=your_github_token
-   export GITHUB_WEBHOOK_SECRET=your_webhook_secret
+   cp .env.example .env
+   # Edit .env with your configuration
    ```
 
 3. Run the service:
@@ -49,7 +50,11 @@ docker build -t git-integration-service .
 
 Run the Docker container:
 ```
-docker run -p 8000:8000 -e GITHUB_TOKEN=your_github_token -e GITHUB_WEBHOOK_SECRET=your_webhook_secret git-integration-service
+docker run -p 8000:8000 \
+  -e GITHUB_TOKEN=your_github_token \
+  -e GITHUB_WEBHOOK_SECRET=your_webhook_secret \
+  -e KAFKA_BOOTSTRAP_SERVERS=kafka:9092 \
+  git-integration-service
 ```
 
 ## Development

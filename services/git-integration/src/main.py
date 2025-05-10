@@ -15,6 +15,8 @@ from typing import Dict, Any, Optional
 
 from src.github.client import GitHubClient
 from src.github.webhook_handler import WebhookHandler
+from src.github.kafka_webhook_handler import KafkaWebhookHandler
+from src.common.kafka_consumer import KafkaConsumer
 from src.models import GitPlatform
 
 # Configure logging
@@ -46,8 +48,22 @@ class Config:
 
     def __init__(self):
         self.config = {
+            # GitHub configuration
             "git.github.webhook_secret": os.environ.get("GITHUB_WEBHOOK_SECRET"),
-            "chat.commands.prefix": "@opencr",
+            "git.github.token": os.environ.get("GITHUB_TOKEN"),
+
+            # Chat configuration
+            "chat.commands.prefix": os.environ.get("CHAT_COMMANDS_PREFIX", "@opencr"),
+
+            # Kafka configuration
+            "kafka.bootstrap_servers": os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
+            "kafka.security_protocol": os.environ.get("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+            "kafka.sasl_mechanism": os.environ.get("KAFKA_SASL_MECHANISM"),
+            "kafka.sasl_username": os.environ.get("KAFKA_SASL_USERNAME"),
+            "kafka.sasl_password": os.environ.get("KAFKA_SASL_PASSWORD"),
+            "kafka.consumer_group_id": os.environ.get("KAFKA_CONSUMER_GROUP_ID", "git-integration"),
+            "kafka.auto_offset_reset": os.environ.get("KAFKA_AUTO_OFFSET_RESET", "earliest"),
+            "kafka.github_validated_topic": os.environ.get("KAFKA_GITHUB_VALIDATED_TOPIC", "webhook.github.validated"),
         }
 
     def get(self, key, default=None):
@@ -84,6 +100,45 @@ def get_webhook_handler(
 ):
     """Get the webhook handler."""
     return WebhookHandler(config, message_queue, github_client)
+
+def get_kafka_consumer(config: Config = Depends(get_config)):
+    """Get the Kafka consumer."""
+    return KafkaConsumer(config)
+
+def get_kafka_webhook_handler(
+    config: Config = Depends(get_config),
+    message_queue: MessageQueue = Depends(get_message_queue),
+    github_client: GitHubClient = Depends(get_github_client),
+):
+    """Get the Kafka webhook handler."""
+    return KafkaWebhookHandler(config, message_queue, github_client)
+
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    # Initialize Kafka consumer
+    config = get_config()
+    kafka_consumer = get_kafka_consumer(config)
+    kafka_webhook_handler = get_kafka_webhook_handler(config, get_message_queue(), get_github_client())
+
+    # Register handlers for Kafka topics
+    kafka_consumer.register_handler(
+        config.get("kafka.github_validated_topic"),
+        kafka_webhook_handler.handle_webhook_event
+    )
+
+    # Start the Kafka consumer
+    await kafka_consumer.start()
+    logger.info("Kafka consumer started")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up resources on shutdown."""
+    # Stop Kafka consumer
+    kafka_consumer = get_kafka_consumer()
+    await kafka_consumer.stop()
+    logger.info("Kafka consumer stopped")
 
 # Define API routes
 @app.get("/")
