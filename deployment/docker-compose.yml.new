@@ -1,0 +1,377 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Webhook Service
+  webhook-service:
+    build:
+      context: ../services/webhook-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - APP_NAME=webhook-service
+      - LOG_LEVEL=INFO
+      - DEBUG=false
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY:-change-me-in-production}
+      - AUTH_TOKEN_EXPIRE_MINUTES=60
+      - AUTH_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_SECURITY_PROTOCOL=PLAINTEXT
+      - KAFKA_TOPIC_PREFIX=webhook
+      - KAFKA_GITHUB_RAW_TOPIC=webhook.github.raw
+      - KAFKA_GITHUB_VALIDATED_TOPIC=webhook.github.validated
+    volumes:
+      - ../config:/config
+    depends_on:
+      - kafka
+      - zookeeper
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Git Integration Service
+  git-integration:
+    build:
+      context: ../services/git-integration
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_SECURITY_PROTOCOL=PLAINTEXT
+      - KAFKA_CONSUMER_GROUP_ID=git-integration
+      - KAFKA_AUTO_OFFSET_RESET=earliest
+      - KAFKA_GITHUB_VALIDATED_TOPIC=webhook.github.validated
+      - CHAT_COMMANDS_PREFIX=@opencr
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - postgres
+      - kafka
+      - zookeeper
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Code Analysis Service
+  code-analysis:
+    build:
+      context: ../services/code-analysis
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+    volumes:
+      - ../config:/config
+      - code-analysis-cache:/cache
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # AI Review Service
+  ai-review:
+    build:
+      context: ../services/ai-review
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Chat Service
+  chat:
+    build:
+      context: ../services/chat
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Knowledge Base Service
+  knowledge-base:
+    build:
+      context: ../services/knowledge-base
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Configuration Manager
+  config-manager:
+    build:
+      context: ../services/config-manager
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Reporting Service
+  reporting:
+    build:
+      context: ../services/reporting
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - ../config:/config
+      - reports:/reports
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Issue Tracking Service
+  issue-tracking:
+    build:
+      context: ../services/issue-tracking
+      dockerfile: Dockerfile
+    environment:
+      - CONFIG_PATH=/config/config.yaml
+      - LOG_LEVEL=INFO
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=user
+      - RABBITMQ_PASS=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - ../config:/config
+    depends_on:
+      - rabbitmq
+      - postgres
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Web UI
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://api-gateway:8000
+      - NODE_ENV=production
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # RabbitMQ (Message Queue)
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Kafka (Message Broker)
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on:
+      - zookeeper
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Zookeeper (for Kafka)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Redis (Cache)
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # PostgreSQL (Database)
+  postgres:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=opencodereviews
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+  # Kafka UI (for monitoring Kafka)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    depends_on:
+      - kafka
+      - zookeeper
+    restart: unless-stopped
+    networks:
+      - opencodereviews-network
+
+volumes:
+  rabbitmq-data:
+  redis-data:
+  postgres-data:
+  code-analysis-cache:
+  reports:
+  kafka-data:
+  zookeeper-data:
+
+networks:
+  opencodereviews-network:
+    driver: bridge
